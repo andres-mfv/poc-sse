@@ -6,12 +6,19 @@ import (
 	"github.com/gin-contrib/cors"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	port := "8080"
+	// os.Args provides access to raw command-line arguments
+	args := os.Args[1:] // os.Args[0] is the path to the program, so we skip it
+	if len(args) > 0 {
+		port = args[0]
+	}
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -56,8 +63,7 @@ func main() {
 		ctx.Header("Connection", "keep-alive")
 
 		// get ctx user id param for poc only
-		//user_id := ctx.Param("user_id")
-		user_id := "19"
+		user_id := ctx.Query("user_id")
 		// add new client to client manager
 		client := clientManager.AddClient(user_id)
 		log.Println("create channel")
@@ -76,7 +82,7 @@ func main() {
 		}
 	})
 
-	err := r.Run()
+	err := r.Run(":" + port)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}

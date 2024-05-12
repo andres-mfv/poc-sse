@@ -6,19 +6,19 @@ export default function Page() {
     return (
      <div>
         <h1>Hello, SSE</h1>
-        <h1>Please enter user ID</h1>
+        <h1>Got Message:</h1>
         <Message userID="19"/>
     </div>
     )
 }
 
-function Message(userID) {
+function Message(props) {
     const [data, setData] = useState('')
     const [isLoading, setLoading] = useState(true)
-    console.log('userID', userID)
+    console.log('userID', props.userID)
    
     useEffect(() => {
-        const source = new EventSource(`http://localhost:8080/sse?user_id=${userID}`);
+        const source = new EventSource(`http://localhost:8080/sse?user_id=${props.userID}`);
 
         source.addEventListener('open', () => {
             console.log('SSE opened!');
@@ -35,13 +35,10 @@ function Message(userID) {
         });
     }, [])
    
-    if (isLoading) return <p>Loading...</p>
-    if (!data) return <p>No profile data</p>
-   
     return (
       <div>
         <h1>{data}</h1>
-        <p>{data}</p>
       </div>
     )
-  }
+}
+
