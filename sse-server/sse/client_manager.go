@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
 
 var mutex = &sync.Mutex{}
@@ -17,7 +18,7 @@ type Event struct {
 
 type ClientManager interface {
 	AddClient(userID string) *Client
-	RemoveClient(client *Client)
+	RemoveClient(userID string)
 	Broadcast(channel, message string)
 }
 
@@ -30,6 +31,7 @@ func (c *clientManager) AddClient(userID string) *Client {
 	defer mutex.Unlock()
 	existingClient, ok := c.clients[userID]
 	if ok {
+		atomic.AddInt64(&existingClient.TotalConnection, 1)
 		return existingClient
 	} else {
 		client := &Client{
@@ -41,9 +43,16 @@ func (c *clientManager) AddClient(userID string) *Client {
 	}
 }
 
-func (c *clientManager) RemoveClient(client *Client) {
-	//TODO implement me
-	panic("implement me")
+func (c *clientManager) RemoveClient(userID string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	existingClient, ok := c.clients[userID]
+	if ok {
+		atomic.AddInt64(&existingClient.TotalConnection, -1)
+		if existingClient.TotalConnection == 0 {
+			delete(c.clients, userID)
+		}
+	}
 }
 
 func (c *clientManager) Broadcast(channel, message string) {
@@ -56,13 +65,17 @@ func (c *clientManager) Broadcast(channel, message string) {
 
 	if client, ok := c.clients[event.UserID]; ok {
 		// ignore compare channel
-		client.Send <- event.Data
+		// should check if there is any connection
+		if client.TotalConnection > 0 {
+			client.Send <- event.Data
+		}
 	}
 }
 
 type Client struct {
-	ID   string
-	Send chan string
+	ID              string
+	Send            chan string
+	TotalConnection int64
 }
 
 func NewClientManager() ClientManager {

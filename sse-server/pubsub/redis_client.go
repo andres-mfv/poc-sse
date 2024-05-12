@@ -32,11 +32,11 @@ type redisClient struct {
 }
 
 func (r *redisClient) Publish(channel string, message interface{}) error {
-	return r.pubsub.Publish(rdb.Context(), channel, message).Err()
+	return r.pubsub.Publish(context.TODO(), channel, message).Err()
 }
 
 func (r *redisClient) Subscribe(channel string) {
-	subscribe := r.pubsub.Subscribe(context.Background(), channel)
+	subscribe := r.pubsub.Subscribe(context.TODO(), channel)
 	ch := subscribe.Channel()
 	for msg := range ch {
 		fmt.Println(msg.Channel, msg.Payload)
