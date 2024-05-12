@@ -2,20 +2,23 @@
 import { useState, useEffect } from 'react'
 
 export default function Page() {
+    const [userID, setUserID] = useState('')
     return (
      <div>
         <h1>Hello, SSE</h1>
-        <Message />
+        <h1>Please enter user ID</h1>
+        <Message userID="19"/>
     </div>
     )
 }
 
-function Message() {
+function Message(userID) {
     const [data, setData] = useState('')
     const [isLoading, setLoading] = useState(true)
+    console.log('userID', userID)
    
     useEffect(() => {
-        const source = new EventSource(`http://localhost:8080/sse`);
+        const source = new EventSource(`http://localhost:8080/sse?user_id=${userID}`);
 
         source.addEventListener('open', () => {
             console.log('SSE opened!');

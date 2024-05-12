@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/andres-mfv/sse-server/pubsub"
+	"github.com/andres-mfv/sse-server/sse"
 	"github.com/gin-contrib/cors"
 	"log"
 	"net/http"
@@ -20,9 +22,30 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	clientManager := sse.NewClientManager()
+
+	pubSubClient := pubsub.NewRedisClient(clientManager)
+
+	// poc scope only have one channel
+	go pubSubClient.Subscribe("sse_event")
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
+		})
+	})
+
+	r.POST("/publish", func(c *gin.Context) {
+		channel := c.PostForm("channel")
+		message := c.PostForm("message")
+		err := pubSubClient.Publish(channel, message)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "published",
 		})
 	})
 
@@ -32,21 +55,16 @@ func main() {
 		ctx.Header("Cache-Control", "no-cache")
 		ctx.Header("Connection", "keep-alive")
 
-		// Create a new channel for this client
-		clientChan := make(chan string)
+		// get ctx user id param for poc only
+		user_id := ctx.Param("user_id")
+		user_id = "19"
+		// add new client to client manager
+		client := clientManager.AddClient(user_id)
 		log.Println("create channel")
-		//defer close(clientChan)
-		go func() {
-			// every 5 seconds send a message to clientChan
-			for {
-				clientChan <- "Hello, world!"
-				time.Sleep(1 * time.Second)
-			}
-		}()
 		// Continuously listen for messages to send to the client
 		for {
 			select {
-			case msg := <-clientChan:
+			case msg := <-client.Send:
 				// Write the message to the response writer
 				ctx.SSEvent("message", msg)
 				ctx.Writer.Flush()
