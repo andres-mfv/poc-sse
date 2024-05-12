@@ -16,3 +16,8 @@ Password: "moneyforward123",
 
 ## run sse-server
 - go run main.go 8080 // change arg[1] to run multi port for testing load balance
+
+## test sent sse
+curl --location 'localhost:8080/publish' \
+--form 'channel="sse_event"' \
+--form 'message="{\"event_id\": \"123\", \"data\": \"okla\", \"user_id\": \"19\"}"'
