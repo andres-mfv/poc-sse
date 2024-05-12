@@ -56,8 +56,8 @@ func main() {
 		ctx.Header("Connection", "keep-alive")
 
 		// get ctx user id param for poc only
-		user_id := ctx.Param("user_id")
-		user_id = "19"
+		//user_id := ctx.Param("user_id")
+		user_id := "19"
 		// add new client to client manager
 		client := clientManager.AddClient(user_id)
 		log.Println("create channel")
