@@ -3,8 +3,8 @@ package sse
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"sync"
-	"sync/atomic"
 )
 
 var mutex = &sync.Mutex{}
@@ -18,39 +18,46 @@ type Event struct {
 
 type ClientManager interface {
 	AddClient(userID string) *Client
-	RemoveClient(userID string)
+	RemoveClient(clientID string)
 	Broadcast(channel, message string)
 }
 
 type clientManager struct {
-	clients map[string]*Client
+	clients map[string]map[string]*Client
 }
 
 func (c *clientManager) AddClient(userID string) *Client {
 	mutex.Lock()
 	defer mutex.Unlock()
-	existingClient, ok := c.clients[userID]
-	if ok {
-		atomic.AddInt64(&existingClient.TotalConnection, 1)
-		return existingClient
-	} else {
-		client := &Client{
-			ID:   userID,
-			Send: make(chan string),
-		}
-		c.clients[userID] = client
-		return client
+	clientID := uuid.New().String()
+	fmt.Println("Add new client ", clientID, " for user ", userID)
+	client := &Client{
+		ID:   clientID,
+		Send: make(chan string),
 	}
+	mapOfClients, ok := c.clients[userID]
+	if !ok {
+		mmClient := map[string]*Client{
+			clientID: client,
+		}
+		c.clients[userID] = mmClient
+	} else {
+		mapOfClients[clientID] = client
+	}
+	return client
 }
 
-func (c *clientManager) RemoveClient(userID string) {
+func (c *clientManager) RemoveClient(clientID string) {
+	fmt.Println("Remove client", clientID)
 	mutex.Lock()
 	defer mutex.Unlock()
-	existingClient, ok := c.clients[userID]
-	if ok {
-		atomic.AddInt64(&existingClient.TotalConnection, -1)
-		if existingClient.TotalConnection == 0 {
-			delete(c.clients, userID)
+	for userID, mapOfClients := range c.clients {
+		if _, ok := mapOfClients[clientID]; ok {
+			delete(mapOfClients, clientID)
+			if len(mapOfClients) == 0 {
+				delete(c.clients, userID)
+			}
+			break
 		}
 	}
 }
@@ -63,23 +70,18 @@ func (c *clientManager) Broadcast(channel, message string) {
 		return
 	}
 
-	if client, ok := c.clients[event.UserID]; ok {
-		// ignore compare channel
-		// should check if there is any connection
-		if client.TotalConnection > 0 {
-			client.Send <- event.Data
-		}
+	for _, clients := range c.clients[event.UserID] {
+		clients.Send <- message
 	}
 }
 
 type Client struct {
-	ID              string
-	Send            chan string
-	TotalConnection int64
+	ID   string
+	Send chan string
 }
 
 func NewClientManager() ClientManager {
 	return &clientManager{
-		clients: make(map[string]*Client),
+		clients: make(map[string]map[string]*Client),
 	}
 }

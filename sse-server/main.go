@@ -77,7 +77,7 @@ func main() {
 				log.Println("send message to client")
 			case <-ctx.Writer.CloseNotify():
 				// If the connection is closed, return
-				clientManager.RemoveClient(user_id)
+				clientManager.RemoveClient(client.ID)
 				return
 			}
 		}
